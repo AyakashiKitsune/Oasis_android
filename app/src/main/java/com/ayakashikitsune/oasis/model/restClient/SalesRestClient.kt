@@ -1,5 +1,6 @@
 package com.ayakashikitsune.oasis.model.restClient
 
+import com.ayakashikitsune.oasis.data.jsonModels.OverviewResponse_model
 import com.ayakashikitsune.oasis.data.jsonModels.PredictWholesalesRequest_model
 import com.ayakashikitsune.oasis.data.jsonModels.PredictionWholesalesResponse_model
 import com.ayakashikitsune.oasis.data.jsonModels.SalesResponse_model
@@ -24,12 +25,17 @@ class SalesRestClient(
     }
 
     val sales_url = "/sales"
+    val overview                    = ServerRoutes(routeEndpoint = "${BASE_URL}$sales_url/overview", method = RestMethods.GET)
     val get_sales                   = ServerRoutes(routeEndpoint = "${BASE_URL}$sales_url/get_sales", method = RestMethods.GET)
     val get_sales_between           = ServerRoutes(routeEndpoint = "${BASE_URL}$sales_url/get_sales", method = RestMethods.GET)
     val predict_wholesales          = ServerRoutes(routeEndpoint = "${BASE_URL}$sales_url/predict_wholesales", method = RestMethods.GET)
     val predict_sales_of_product    = ServerRoutes(routeEndpoint = "${BASE_URL}$sales_url/predict_wholesales", method = RestMethods.GET)
     val get_recent_sales            = ServerRoutes(routeEndpoint = "${BASE_URL}$sales_url/get_recent_sales", method = RestMethods.GET)
 
+    suspend fun get_overview(): OverviewResponse_model {
+        val req = client.get(overview.routeEndpoint)
+        return req.body()
+    }
     suspend fun get_sales(date: String): List<SalesResponse_model> {
         val req = client.get(get_sales.routeEndpoint.plus(date))
         return req.body()

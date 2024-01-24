@@ -1,6 +1,7 @@
 package com.ayakashikitsune.oasis.presentation
 
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.ErrorOutline
 import androidx.compose.material.icons.filled.Home
 import androidx.compose.material.icons.filled.Inventory
 import androidx.compose.material.icons.filled.PermDeviceInformation
@@ -35,6 +36,7 @@ sealed class Screen_paths(val title: String, val address_id: String, val icon: I
     }
     object Settings_screen : Screen_paths("Settings", "settings_Screen", Icons.Default.Settings)
     object About_screen : Screen_paths("About", "About_Screen", Icons.Default.PermDeviceInformation)
+    object Error_Screen : Screen_paths("Error Logs", "ErrorScreen", Icons.Default.ErrorOutline)
 }
 
 data class Tabs(

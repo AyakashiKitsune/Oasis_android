@@ -17,55 +17,55 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.rounded.ArrowDownward
+import androidx.compose.material.icons.rounded.ArrowUpward
 import androidx.compose.material.icons.rounded.SearchOff
 import androidx.compose.material3.Card
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
-import androidx.compose.material3.SnackbarDuration
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Surface
+import androidx.compose.material3.Tab
+import androidx.compose.material3.TabRow
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.layout.Layout
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import com.ayakashikitsune.oasis.data.constants.SalesResponse_model_sort
 import com.ayakashikitsune.oasis.data.jsonModels.SalesResponse_model
 import com.ayakashikitsune.oasis.model.OASISViewmodel
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.withContext
 
 
-@OptIn(ExperimentalFoundationApi::class)
 @Composable
 fun Sales_Screen(
     viewmodel: OASISViewmodel
 ) {
     val salesState = viewmodel.salesState.collectAsState()
-    val config = LocalConfiguration.current
+
     val listofSalesState by remember {
         derivedStateOf {
             salesState.value.listPredictedWholeSalesCache
         }
     }
-    var sortrecentby by remember { mutableStateOf<SalesResponse_model_sort>(SalesResponse_model_sort.NAME) }
+    var sortrecentby by remember { mutableStateOf<SalesResponse_model_sort>(SalesResponse_model_sort.ID) }
     var orderByASC by remember { mutableStateOf(true) }
     val listOfRecentSales by remember {
         derivedStateOf {
@@ -114,144 +114,182 @@ fun Sales_Screen(
         }
     }
     val snackbarHostState = remember { SnackbarHostState() }
-//    LaunchedEffect(true) {
-//        viewmodel.get_recent_sales(
-//            onError = {
-//                withContext(Dispatchers.Default) {
-//                    snackbarHostState.showSnackbar(
-//                        message = it,
-//                        duration = SnackbarDuration.Short
-//                    )
-//                }
-//            }
-//        )
-//    }
+//    var showDialog by remember{ mutableStateOf(false) }
+//    var messageDialog by remember{ mutableStateOf("") }
+    var selectedTabIndex by remember { mutableIntStateOf(0) }
     Scaffold(
+        topBar = {
+            val tabs = listOf("My Sales", "Prediction")
+            TabRow(selectedTabIndex = selectedTabIndex) {
+                tabs.forEachIndexed { index, text ->
+                    Tab(
+                        text = { Text(text = text, style = MaterialTheme.typography.titleMedium) },
+                        selected = index == selectedTabIndex,
+                        onClick = {
+                            selectedTabIndex = index
+                        }
+                    )
+                }
+            }
+        },
         snackbarHost = {
             SnackbarHost(hostState = snackbarHostState)
         },
-    ) {
-        Surface(
-            modifier = Modifier
-                .padding(it)
-                .fillMaxSize()
-        ) {
-            if (listOfRecentSales.isEmpty()) {
-                Surface {
-                    Box(contentAlignment = Alignment.Center) {
-                        Column(
-                            verticalArrangement = Arrangement.Center,
-                            horizontalAlignment = Alignment.CenterHorizontally
-                        ) {
-                            Icon(
-                                imageVector = Icons.Rounded.SearchOff,
-                                contentDescription = null,
-                                modifier = Modifier.size(config.screenWidthDp.dp / 2)
-                            )
-                            Text(
-                                text = "You have no sales",
-                                style = MaterialTheme.typography.displayMedium
-                            )
-                        }
-                    }
-                }
-            } else {
-                LazyColumn(
+    ) { padding ->
+        when (selectedTabIndex) {
+            0 -> {
+                MySalesTable(
+                    listOfRecentSales = { listOfRecentSales },
+                    onChangeOrderByASC = { orderByASC = !orderByASC },
+                    onChangeSortrecentby = { sortrecentby = it },
+                    getOrderByASC = { orderByASC },
+                    getSortrecentby = { sortrecentby },
                     modifier = Modifier
+                        .padding(padding)
                         .fillMaxSize()
-                        .draggable(
-                            orientation = Orientation.Vertical,
-                            state = rememberDraggableState {
-                                Log.d("swipe", it.toString())
-                            }
-                        )
-                ) {
-                    stickyHeader {
-                        val list = listOf("Id", "Name", "Category", "Date", "Price", "Sale")
-//                        Row(
-//                            horizontalArrangement = Arrangement.SpaceBetween,
-//                            modifier = Modifier.fillMaxWidth()
-//                        ) {
+                )
+            }
 
-//                        }
-                        custom_layout(
-                            modifier = Modifier.background(Color.Red).scrollable(rememberScrollState(), orientation = Orientation.Horizontal)
-                        ) {
-                            list.forEach {
-                                Text(
-                                    text = it,
-                                    style = MaterialTheme.typography.labelLarge,
-                                    modifier = Modifier
-                                        .padding(8.dp)
-                                        .clickable {
-                                            orderByASC = !orderByASC
-                                            when (it) {
-                                                "Id" -> {
-                                                    sortrecentby = SalesResponse_model_sort.ID
-                                                }
-
-                                                "Name" -> {
-                                                    sortrecentby = SalesResponse_model_sort.NAME
-                                                }
-
-                                                "Category" -> {
-                                                    sortrecentby = SalesResponse_model_sort.CATEGORY
-                                                }
-
-                                                "Date" -> {
-                                                    sortrecentby = SalesResponse_model_sort.DATE
-                                                }
-
-                                                "Price" -> {
-                                                    sortrecentby = SalesResponse_model_sort.PRICE
-                                                }
-
-                                                "Sale" -> {
-                                                    sortrecentby = SalesResponse_model_sort.SALE
-                                                }
-                                            }
-                                        }
-                                )
-                            }
-                        }
-
-                    }
-//                    items(listOfRecentSales.size, key = { listOfRecentSales.get(it).id }) {
-//                        RowTable(
-//                            item = listOfRecentSales[it],
-//                            width = config.screenWidthDp.dp * 0.1f,
-//                            modifier = Modifier,
-//                        )
-//                    }
-                }
+            1 -> {
+                MySalesPrediction(modifier = Modifier)
             }
         }
-
     }
 }
 
 @Composable
-fun custom_layout(
-    modifier: Modifier,
-    content: @Composable () -> Unit
+fun MySalesPrediction(
+    modifier: Modifier
 ) {
-    Layout(
-        content = content,
-        modifier = modifier
-    ) { measurables, constraints ->
-        val placeable = measurables.map {
-            it.measure(constraints)
-        }
 
-        layout(constraints.maxWidth, constraints.minHeight) {
-            var x = 8
-            placeable.forEach {
-                it.place(x,0)
-                x += it.width + 220
+    Surface(
+        modifier = modifier,
+        color = Color.Green
+    ) {
+
+    }
+}
+
+@OptIn(ExperimentalFoundationApi::class)
+@Composable
+fun MySalesTable(
+    listOfRecentSales: () -> List<SalesResponse_model>,
+    onChangeOrderByASC: () -> Unit,
+    getOrderByASC: () -> Boolean,
+    onChangeSortrecentby: (SalesResponse_model_sort) -> Unit,
+    getSortrecentby: () -> SalesResponse_model_sort,
+    modifier: Modifier,
+) {
+    val config = LocalConfiguration.current
+    val iconASC = if (getOrderByASC()) {
+        Icons.Rounded.ArrowUpward
+    } else {
+        Icons.Rounded.ArrowDownward
+    }
+
+    Surface(
+        modifier = modifier
+    ) {
+        if (listOfRecentSales().isEmpty()) {
+            Surface {
+                Box(contentAlignment = Alignment.Center) {
+                    Column(
+                        verticalArrangement = Arrangement.Center,
+                        horizontalAlignment = Alignment.CenterHorizontally
+                    ) {
+                        Icon(
+                            imageVector = Icons.Rounded.SearchOff,
+                            contentDescription = null,
+                            modifier = Modifier.size(config.screenWidthDp.dp / 2)
+                        )
+                        Text(
+                            text = "You have no sales",
+                            style = MaterialTheme.typography.displayMedium
+                        )
+                    }
+                }
+            }
+        } else {
+            LazyColumn(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .draggable(
+                        orientation = Orientation.Vertical,
+                        state = rememberDraggableState {
+                            Log.d("swipe", it.toString())
+                        }
+                    )
+            ) {
+                stickyHeader {
+                    val list = listOf("Id", "Name", "Category", "Date", "Price", "Sale")
+                    Row(
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .background(MaterialTheme.colorScheme.surface)
+                            .scrollable(
+                                rememberScrollState(),
+                                orientation = Orientation.Horizontal,
+                                enabled = true
+                            )
+                    ) {
+                        list.forEach {
+                            if (it.lowercase() == getSortrecentby().name.lowercase()) {
+                                Icon(
+                                    imageVector = iconASC,
+                                    contentDescription = null
+                                )
+                            }
+                            Text(
+                                text = it,
+                                style = MaterialTheme.typography.labelLarge,
+                                modifier = Modifier
+                                    .padding(8.dp)
+                                    .width(config.screenWidthDp.dp / 4)
+                                    .clickable {
+                                        onChangeOrderByASC()
+                                        when (it) {
+                                            "Id" -> {
+                                                onChangeSortrecentby(SalesResponse_model_sort.ID)
+                                            }
+
+                                            "Name" -> {
+                                                onChangeSortrecentby(SalesResponse_model_sort.NAME)
+                                            }
+
+                                            "Category" -> {
+                                                onChangeSortrecentby(SalesResponse_model_sort.CATEGORY)
+                                            }
+
+                                            "Date" -> {
+                                                onChangeSortrecentby(SalesResponse_model_sort.DATE)
+                                            }
+
+                                            "Price" -> {
+                                                onChangeSortrecentby(SalesResponse_model_sort.PRICE)
+                                            }
+
+                                            "Sale" -> {
+                                                onChangeSortrecentby(SalesResponse_model_sort.SALE)
+                                            }
+                                        }
+                                    }
+                            )
+                        }
+                    }
+                }
+                items(listOfRecentSales().size, key = { listOfRecentSales().get(it).id }) {
+                    RowTable(
+                        item = listOfRecentSales()[it],
+                        width = config.screenWidthDp.dp * 0.1f,
+                        modifier = Modifier,
+                    )
+                }
             }
         }
     }
 }
+
 
 @Composable
 fun RowTable(

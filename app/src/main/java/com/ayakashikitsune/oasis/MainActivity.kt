@@ -1,17 +1,13 @@
 package com.ayakashikitsune.oasis
 
 import android.os.Bundle
-import android.util.Log
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.foundation.ExperimentalFoundationApi
-import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.pager.PagerState
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.pager.rememberPagerState
-import androidx.compose.material3.CenterAlignedTopAppBar
-import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.NavigationBar
@@ -21,13 +17,11 @@ import androidx.compose.material3.Tab
 import androidx.compose.material3.TabRow
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
-import androidx.compose.ui.tooling.preview.Preview
+import androidx.compose.ui.Modifier
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
@@ -37,12 +31,12 @@ import com.ayakashikitsune.oasis.presentation.Screen_paths
 import com.ayakashikitsune.oasis.presentation.Tabs
 import com.ayakashikitsune.oasis.presentation.navItems
 import com.ayakashikitsune.oasis.presentation.screens.About_Screen
+import com.ayakashikitsune.oasis.presentation.screens.ErrorScreen
 import com.ayakashikitsune.oasis.presentation.screens.Inventory_Screen
 import com.ayakashikitsune.oasis.presentation.screens.Overview_Screen
 import com.ayakashikitsune.oasis.presentation.screens.Sales_Screen
 import com.ayakashikitsune.oasis.presentation.screens.Settings_Screen
 import com.ayakashikitsune.oasis.ui.theme.OASISTheme
-import kotlinx.coroutines.launch
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -59,25 +53,26 @@ class MainActivity : ComponentActivity() {
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
 fun MainScreen(
-    viewmodel : OASISViewmodel
+    viewmodel: OASISViewmodel
 ) {
     val navController = rememberNavController()
     val currentNav = navController.currentBackStackEntryAsState()
 
     var currentPage by remember { mutableIntStateOf(0) }
-    val inventoryHorizontalState = rememberPagerState(initialPage = 0, pageCount = { Screen_paths.Sales_screen.tabs.size })
+    val inventoryHorizontalState =
+        rememberPagerState(initialPage = 0, pageCount = { Screen_paths.Sales_screen.tabs.size })
 
     Scaffold(
         bottomBar = {
             Oasis_NavigationBar(navList = navItems, onClick = {
-                navController.navigate(it.address_id){
+                navController.navigate(it.address_id) {
                     this.launchSingleTop = true
                 }
             }, selected = {
                 currentNav.value?.destination?.route ?: Screen_paths.Overview_screen.address_id
             })
         },
-    ) {  padding ->
+    ) { padding ->
         NavHost(
             navController = navController,
             startDestination = Screen_paths.Overview_screen.address_id,
@@ -99,15 +94,20 @@ fun MainScreen(
             composable(Screen_paths.Inventory_screen.address_id) {
                 Inventory_Screen(
                     paddingValues = padding,
-                    currentPage = {currentPage},
-                    horizontalpager = {inventoryHorizontalState}
+                    currentPage = { currentPage },
+                    horizontalpager = { inventoryHorizontalState }
                 )
             }
             composable(Screen_paths.Settings_screen.address_id) {
-                Settings_Screen()
+                Settings_Screen(
+                    navController
+                )
             }
             composable(Screen_paths.About_screen.address_id) {
                 About_Screen()
+            }
+            composable(Screen_paths.Error_Screen.address_id) {
+                ErrorScreen(viewmodel, Modifier.fillMaxSize())
             }
         }
     }
