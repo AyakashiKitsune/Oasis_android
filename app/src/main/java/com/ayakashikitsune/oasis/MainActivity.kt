@@ -75,7 +75,7 @@ fun MainScreen(
     ) { padding ->
         NavHost(
             navController = navController,
-            startDestination = Screen_paths.Overview_screen.address_id,
+            startDestination = Screen_paths.Sales_screen.address_id,
             enterTransition = { fadeIn() },
             exitTransition = { fadeOut() },
             popExitTransition = { fadeOut() },
@@ -89,7 +89,10 @@ fun MainScreen(
                 )
             }
             composable(Screen_paths.Sales_screen.address_id) {
-                Sales_Screen(viewmodel)
+                Sales_Screen(
+                    viewmodel,
+                    padding
+                )
             }
             composable(Screen_paths.Inventory_screen.address_id) {
                 Inventory_Screen(

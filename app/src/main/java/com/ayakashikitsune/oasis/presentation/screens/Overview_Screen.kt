@@ -59,6 +59,7 @@ import com.ayakashikitsune.oasis.model.OASISViewmodel
 import com.patrykandpatrick.vico.compose.axis.horizontal.rememberBottomAxis
 import com.patrykandpatrick.vico.compose.axis.vertical.rememberStartAxis
 import com.patrykandpatrick.vico.compose.chart.Chart
+import com.patrykandpatrick.vico.compose.chart.column.columnChart
 import com.patrykandpatrick.vico.compose.chart.line.lineChart
 import com.patrykandpatrick.vico.compose.chart.line.lineSpec
 import com.patrykandpatrick.vico.core.axis.Axis
@@ -263,9 +264,9 @@ fun Overview_Screen(
                                         modifier = Modifier
                                             .padding(8.dp)
                                             .then(
-                                                if (index == 1 ){
+                                                if (index == 1) {
                                                     Modifier.weight(1f)
-                                                }else{
+                                                } else {
                                                     Modifier
                                                 }
                                             )
@@ -411,7 +412,7 @@ fun PlotDate(x: List<String>, y: List<Double>, modifier: Modifier) {
         AxisValueFormatter<AxisPosition.Horizontal.Bottom> { value, _ -> x[value.toInt()] }
 
     Chart(
-        chart = lineChart(),
+        chart = if(x.size > 1) lineChart() else columnChart(),
         model = chartEntryModel,
         startAxis = rememberStartAxis(),
         bottomAxis = rememberBottomAxis(

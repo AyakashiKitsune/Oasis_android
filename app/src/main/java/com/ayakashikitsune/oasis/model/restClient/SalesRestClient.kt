@@ -19,18 +19,18 @@ class SalesRestClient(
     private val client: HttpClient,
     serverConfig: ServerConfig
 ) {
-    var BASE_URL: String
+    private var BASE_URL: String
     init{
-        BASE_URL =serverConfig.getUrl()
+        BASE_URL = serverConfig.getUrl()
     }
 
-    val sales_url = "/sales"
-    val overview                    = ServerRoutes(routeEndpoint = "${BASE_URL}$sales_url/overview", method = RestMethods.GET)
-    val get_sales                   = ServerRoutes(routeEndpoint = "${BASE_URL}$sales_url/get_sales", method = RestMethods.GET)
-    val get_sales_between           = ServerRoutes(routeEndpoint = "${BASE_URL}$sales_url/get_sales", method = RestMethods.GET)
-    val predict_wholesales          = ServerRoutes(routeEndpoint = "${BASE_URL}$sales_url/predict_wholesales", method = RestMethods.GET)
-    val predict_sales_of_product    = ServerRoutes(routeEndpoint = "${BASE_URL}$sales_url/predict_wholesales", method = RestMethods.GET)
-    val get_recent_sales            = ServerRoutes(routeEndpoint = "${BASE_URL}$sales_url/get_recent_sales", method = RestMethods.GET)
+    private val sales_url = "/sales"
+    private val overview                    = ServerRoutes(routeEndpoint = "${BASE_URL}$sales_url/overview", method = RestMethods.GET)
+    private val get_sales                   = ServerRoutes(routeEndpoint = "${BASE_URL}$sales_url/get_sales", method = RestMethods.GET)
+    private val get_sales_between           = ServerRoutes(routeEndpoint = "${BASE_URL}$sales_url/get_sales/", method = RestMethods.GET)
+    private val predict_wholesales          = ServerRoutes(routeEndpoint = "${BASE_URL}$sales_url/predict_wholesales/", method = RestMethods.GET)
+    private val predict_sales_of_product    = ServerRoutes(routeEndpoint = "${BASE_URL}$sales_url/predict_wholesales/", method = RestMethods.GET)
+    private val get_recent_sales            = ServerRoutes(routeEndpoint = "${BASE_URL}$sales_url/get_recent_sales", method = RestMethods.GET)
 
     suspend fun get_overview(): OverviewResponse_model {
         val req = client.get(overview.routeEndpoint)

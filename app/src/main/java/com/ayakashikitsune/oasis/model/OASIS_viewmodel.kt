@@ -3,10 +3,13 @@ package com.ayakashikitsune.oasis.model
 import android.icu.text.SimpleDateFormat
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.ayakashikitsune.oasis.data.constants.SalesResponse_model_sort
 import com.ayakashikitsune.oasis.data.jsonModels.LoggerError
+import com.ayakashikitsune.oasis.data.jsonModels.Query_model
 import com.ayakashikitsune.oasis.model.restClient.InventoryRestClient
 import com.ayakashikitsune.oasis.model.restClient.SalesRestClient
 import com.ayakashikitsune.oasis.model.restClient.SetupRestClient
+import com.ayakashikitsune.oasis.utils.converters.toDate
 import io.ktor.client.HttpClient
 import io.ktor.client.engine.android.Android
 import io.ktor.client.plugins.contentnegotiation.ContentNegotiation
@@ -21,7 +24,6 @@ import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import kotlinx.serialization.json.Json
-import java.net.ConnectException
 import java.util.Locale
 
 class
@@ -50,7 +52,9 @@ OASISViewmodel : ViewModel() {
 
     private val _serverConfig = MutableStateFlow(
         ServerConfig(
-            host = "http://192.168.84.255"
+//            host = "http://192.168.84.255"
+//            host = "http://192.168.1.43"
+            host = "http://192.168.1.12"
         )
     )
     val serverConfig = _serverConfig.asStateFlow()
@@ -123,109 +127,343 @@ OASISViewmodel : ViewModel() {
         }
     }
 
+    fun sort(
+        iswholesale: Boolean,
+        sortby: SalesResponse_model_sort,
+        orderByASC: Boolean
+    ) {
+        viewModelScope.launch {
+            withContext(Dispatchers.IO) {
+                when (iswholesale) {
+                    true -> {
+                        _salesState.update {
+                            it.copy(
+                                listSalesWholesaleCache = it.listSalesWholesaleCache.run {
+                                    when (sortby) {
+                                        SalesResponse_model_sort.DATE -> {
+                                            sortedBy {
+                                                it.date
+                                            }
+                                        }
+
+                                        SalesResponse_model_sort.SALE -> {
+                                            sortedBy {
+                                                it.sum
+                                            }
+                                        }
+
+                                        else -> {
+                                            sortedBy {
+                                                it.date
+                                            }
+                                        }
+                                    }
+
+                                }.run {
+                                    when (orderByASC) {
+                                        true -> this
+                                        false -> reversed()
+                                    }
+                                }
+                            )
+                        }
+                    }
+
+                    false -> {
+                        _salesState.update {
+                            it.copy(
+                                listSalesCache = it.listSalesCache.run {
+                                    when (sortby) {
+                                        SalesResponse_model_sort.CATEGORY -> {
+                                            sortedBy {
+                                                it.category
+                                            }
+                                        }
+
+                                        SalesResponse_model_sort.DATE -> {
+                                            sortedBy {
+                                                it.category
+                                            }
+                                        }
+
+                                        SalesResponse_model_sort.ID -> {
+                                            sortedBy {
+                                                it.id
+                                            }
+                                        }
+
+                                        SalesResponse_model_sort.NAME -> {
+                                            sortedBy {
+                                                it.name
+                                            }
+                                        }
+
+                                        SalesResponse_model_sort.PRICE -> {
+                                            sortedBy {
+                                                it.price
+                                            }
+                                        }
+
+                                        SalesResponse_model_sort.SALE -> {
+                                            sortedBy {
+                                                it.sale
+                                            }
+                                        }
+                                    }
+                                }.run {
+                                    when (orderByASC) {
+                                        true -> this
+                                        false -> reversed()
+                                    }
+                                }
+                            )
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    fun evaluateSalesQuery(
+        queryModel: Query_model,
+        onError: (String) -> Unit
+    ) {
+        when (queryModel.justRecentSales) {
+            true -> {
+                get_recent_sales(
+                    iswholesale = queryModel.iswholesale,
+                    onError = { onError(it) }
+                )
+            }
+
+            false -> {
+                when (queryModel.isMultipleDate) {
+                    true -> {
+                        // multiple date
+                        get_sales_between(
+                            fromdate = queryModel.dateRangeStart,
+                            todate = queryModel.dateRangeEnd,
+                            iswholesale = queryModel.iswholesale,
+                            onError = { onError(it) }
+                        )
+                    }
+
+                    false -> {
+                        // single date
+                        get_sales(
+                            YYMMDD = queryModel.datePicked,
+                            iswholesale = queryModel.iswholesale,
+                            onError = { onError(it) }
+                        )
+                    }
+                }
+            }
+        }
+
+    }
+
+    fun get_sales_between(
+        fromdate: String,
+        todate: String,
+        iswholesale: Boolean,
+        onError: (String) -> Unit
+    ) {
+        viewModelScope.launch {
+            withContext(Dispatchers.IO) {
+                when (iswholesale) {
+                    true -> {
+                        try {
+                            val result =
+                                salesRestClient.get_sales_betweenWholesale(fromdate, todate).apply {
+                                    map {
+                                        it.copy(
+                                            date = it.date.toDate()
+                                        )
+                                    }
+                                }
+                            _salesState.update {
+                                it.copy(
+                                    listSalesWholesaleCache = result
+                                )
+                            }
+                        } catch (e: Exception) {
+                            _errorLogs.update {
+                                val list = it.toMutableList().apply {
+                                    add(
+                                        LoggerError(
+                                            message = e.message,
+                                            fromFunction = "get_sales_betweenWholesale"
+                                        )
+                                    )
+                                }
+                                list
+                            }
+                            onError(e.message ?: "error")
+                        }
+                    }
+
+                    false -> {
+                        try {
+                            val result = salesRestClient.get_sales_between(fromdate, todate)
+                            _salesState.update {
+                                it.copy(
+                                    listSalesCache = result
+                                )
+                            }
+                        } catch (e: Exception) {
+                            _errorLogs.update {
+                                val list = it.toMutableList().apply {
+                                    add(
+                                        LoggerError(
+                                            message = e.message,
+                                            fromFunction = "get_salesWholesale"
+                                        )
+                                    )
+                                }
+                                list
+                            }
+                            onError(e.message ?: "error")
+                        }
+                    }
+                }
+            }
+        }
+    }
+
     fun get_sales(
         YYMMDD: String,
-        requery: Boolean = false,
+        iswholesale: Boolean,
         onError: (String) -> Unit
     ) {
         viewModelScope.launch {
             withContext(Dispatchers.IO) {
-                if (_salesState.value.listSalesCache.isEmpty() or requery) {
-                    try {
-                        val result = salesRestClient.get_sales(YYMMDD)
-                        _salesState.update {
-                            it.copy(
-                                listSalesCache = result
-                            )
-                        }
-                    } catch (e: Exception) {
-                        _errorLogs.update {
-                            val list = it.toMutableList().apply {
-                                add(LoggerError(message = e.message, fromFunction = "get_sales"))
+                when (iswholesale) {
+                    true -> {
+                        try {
+                            val result = salesRestClient.get_salesWholesale(YYMMDD).apply {
+                                map {
+                                    it.copy(
+                                        date = it.date.toDate()
+                                    )
+                                }
                             }
-                            list
+                            _salesState.update {
+                                it.copy(
+                                    listSalesWholesaleCache = result
+                                )
+                            }
+                        } catch (e: Exception) {
+                            _errorLogs.update {
+                                val list = it.toMutableList().apply {
+                                    add(
+                                        LoggerError(
+                                            message = e.message,
+                                            fromFunction = "get_salesWholesale"
+                                        )
+                                    )
+                                }
+                                list
+                            }
+                            onError(e.message ?: "error")
                         }
-                        onError(e.message ?: "error")
+                    }
+
+                    false -> {
+                        try {
+                            val result = salesRestClient.get_sales(YYMMDD)
+                            _salesState.update {
+                                it.copy(
+                                    listSalesCache = result
+                                )
+                            }
+                        } catch (e: Exception) {
+                            _errorLogs.update {
+                                val list = it.toMutableList().apply {
+                                    add(
+                                        LoggerError(
+                                            message = e.message,
+                                            fromFunction = "get_sales"
+                                        )
+                                    )
+                                }
+                                list
+                            }
+                            onError(e.message ?: "error")
+                        }
+
                     }
                 }
+
             }
         }
     }
 
-    fun get_salesWholesale(
-        YYMMDD: String,
-        requery: Boolean = false,
-        onError: (String) -> Unit
-    ) {
-        viewModelScope.launch {
-            withContext(Dispatchers.IO) {
-                if (_salesState.value.listSalesWholesaleCache.isEmpty() or requery) {
-                    try {
-                        val result = salesRestClient.get_salesWholesale(YYMMDD)
-                        _salesState.update {
-                            it.copy(
-                                listSalesWholesaleCache = result
-                            )
-                        }
-                    } catch (e: Exception) {
-                        _errorLogs.update {
-                            val list = it.toMutableList().apply {
-                                add(
-                                    LoggerError(
-                                        message = e.message,
-                                        fromFunction = "get_salesWholesale"
-                                    )
-                                )
-                            }
-                            list
-                        }
-                        onError(e.message ?: "error")
-                    }
-                }
-            }
-        }
-    }
 
     fun get_recent_sales(
-        requery: Boolean = false,
-        onError: suspend (String) -> Unit
+        iswholesale: Boolean,
+        onError: (String) -> Unit
     ) {
         viewModelScope.launch {
             withContext(Dispatchers.IO) {
-                if (_salesState.value.recentSalesCache.isEmpty() or requery) {
-                    try {
-                        val result = salesRestClient.get_recent_sales()
-                        _salesState.update {
-                            it.copy(
-                                recentSalesCache = result
-                            )
-                        }
-                    } catch (e: ConnectException) {
-                        _errorLogs.update {
-                            val list = it.toMutableList().apply {
-                                add(
-                                    LoggerError(
-                                        message = e.message,
-                                        fromFunction = "get_recent_sales"
+                when (iswholesale) {
+                    true -> {
+                        try {
+                            val result = salesRestClient.get_recent_salesWholesale().apply {
+                                map {
+                                    it.copy(
+                                        date = it.date.toDate()
                                     )
+                                }
+                            }
+                            _salesState.update {
+                                it.copy(
+                                    listSalesWholesaleCache = result
                                 )
                             }
-                            list
-                        }
-                        onError("connection to server failed")
-                    } catch (e: Exception) {
-                        _errorLogs.update {
-                            val list = it.toMutableList().apply {
-                                add(
-                                    LoggerError(
-                                        message = e.message,
-                                        fromFunction = "get_recent_sales"
+                        }  catch (e: Exception) {
+                            _errorLogs.update {
+                                val list = it.toMutableList().apply {
+                                    add(
+                                        LoggerError(
+                                            message = e.message,
+                                            fromFunction = "get_recent_sales"
+                                        )
                                     )
+                                }
+                                list
+                            }
+                            onError(e.message ?: "error")
+                        }
+                    }
+
+                    false-> {
+                        try {
+                            val result = salesRestClient.get_recent_sales().apply {
+                                map {
+                                    it.copy(
+                                        date = it.date.toDate()
+                                    )
+                                }
+                            }
+                            _salesState.update {
+                                it.copy(
+                                    listSalesCache = result
                                 )
                             }
-                            list
+                        } catch (e: Exception) {
+                            _errorLogs.update {
+                                val list = it.toMutableList().apply {
+                                    add(
+                                        LoggerError(
+                                            message = e.message,
+                                            fromFunction = "get_recent_sales"
+                                        )
+                                    )
+                                }
+                                list
+                            }
+                            onError(e.message ?: "error")
                         }
-                        onError(e.message ?: "error")
                     }
                 }
             }
@@ -235,34 +473,29 @@ OASISViewmodel : ViewModel() {
 
     fun predict_wholesales(
         duration: Int,
-        requery: Boolean = false,
         onError: (String) -> Unit
     ) {
         viewModelScope.launch {
             withContext(Dispatchers.IO) {
-                if (_salesState.value.listPredictedWholeSalesCache.isEmpty() or requery) {
-                    try {
-                        val result = salesRestClient.predict_wholesales(duration)
-                        _salesState.update {
-                            it.copy(
-                                listPredictedWholeSalesCache = result
+                try {
+                    val result = salesRestClient.predict_wholesales(duration)
+                    _salesState.update {
+                        it.copy(
+                            listPredictedWholeSalesCache = result
+                        )
+                    }
+                } catch (e: Exception) {
+                    _errorLogs.update {
+                        it.toMutableList().apply {
+                            add(
+                                LoggerError(
+                                    message = e.message,
+                                    fromFunction = "predict_wholesales"
+                                )
                             )
                         }
-                    } catch (e: Exception) {
-                        _errorLogs.update {
-                            val list = it.toMutableList().apply {
-                                add(
-                                    LoggerError(
-                                        message = e.message,
-                                        fromFunction = "predict_wholesales"
-                                    )
-                                )
-                            }
-                            list
-                        }
-                        onError(e.message ?: "error")
                     }
-
+                    onError(e.message ?: "error")
                 }
             }
         }
