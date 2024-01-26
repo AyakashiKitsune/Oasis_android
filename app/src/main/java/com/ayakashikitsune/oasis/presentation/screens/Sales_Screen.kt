@@ -64,20 +64,41 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import com.ayakashikitsune.oasis.data.constants.SalesResponse_model_sort
 import com.ayakashikitsune.oasis.data.jsonModels.PredictWholesalesRequest_model
+import com.ayakashikitsune.oasis.data.jsonModels.PredictionWholesalesResponse_model
 import com.ayakashikitsune.oasis.data.jsonModels.Query_model
 import com.ayakashikitsune.oasis.data.jsonModels.SalesResponse_model
 import com.ayakashikitsune.oasis.data.jsonModels.SalesWholesaleResponse_model
 import com.ayakashikitsune.oasis.model.OASISViewmodel
+import com.ayakashikitsune.oasis.ui.theme.OASISTheme
 import com.ayakashikitsune.oasis.utils.converters.FromHelperThatDateStrjustYear
 import com.ayakashikitsune.oasis.utils.converters.FromHelpertoDate
 import com.ayakashikitsune.oasis.utils.converters.FromHelpertoTimemilis
+import com.patrykandpatrick.vico.compose.axis.horizontal.rememberBottomAxis
+import com.patrykandpatrick.vico.compose.axis.vertical.rememberStartAxis
+import com.patrykandpatrick.vico.compose.chart.Chart
+import com.patrykandpatrick.vico.compose.chart.line.lineChart
+import com.patrykandpatrick.vico.compose.chart.line.lineSpec
+import com.patrykandpatrick.vico.core.axis.AxisPosition
+import com.patrykandpatrick.vico.core.axis.formatter.AxisValueFormatter
+import com.patrykandpatrick.vico.core.chart.composed.plus
+import com.patrykandpatrick.vico.core.component.shape.LineComponent
+import com.patrykandpatrick.vico.core.component.shape.ShapeComponent
+import com.patrykandpatrick.vico.core.component.text.textComponent
+import com.patrykandpatrick.vico.core.dimensions.MutableDimensions
+import com.patrykandpatrick.vico.core.entry.composed.ComposedChartEntryModelProducer
+import com.patrykandpatrick.vico.core.entry.entriesOf
+import com.patrykandpatrick.vico.core.legend.LegendItem
+import com.patrykandpatrick.vico.core.legend.VerticalLegend
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
@@ -184,6 +205,7 @@ fun Sales_Screen(
             1 -> {
                 MySalesPrediction(
                     viewmodel = viewmodel,
+                    isGraphView = { isGraphView },
                     modifier = Modifier
                         .padding(padding)
                         .fillMaxSize()
@@ -228,7 +250,7 @@ fun Sales_Screen(
                 showBottomSheet = false
             },
         ) {
-            when(selectedTabIndex){
+            when (selectedTabIndex) {
                 0 -> {
                     FilterSheet(
                         iswholesale = { iswholesale },
@@ -292,7 +314,7 @@ fun Sales_Screen(
 
                 1 -> {
                     FilterSheetPrediction(
-                        isGraphView = {isGraphView},
+                        isGraphView = { isGraphView },
                         maxdate = maxdate,
                         mindate = mindate,
                         onChangeisGraphView = { isGraphView = it },
@@ -306,7 +328,8 @@ fun Sales_Screen(
                         applyFilter = {
                             coroutineScope.launch {
                                 isLoading = true
-                                dialogTitle = "predicting your ${it.duration} days from ${mindate.FromHelpertoDate()}"
+                                dialogTitle =
+                                    "predicting your ${it.duration} days from ${mindate.FromHelpertoDate()}"
                                 delay(1000)
                                 viewmodel.predict_wholesales(
                                     duration = it.duration,
@@ -321,6 +344,10 @@ fun Sales_Screen(
                                         }
                                     }
                                 )
+                                while (salesState.listPredictedWholeSalesCache == null){
+                                    dialogTitle = "Predicting"
+                                    delay(500)
+                                }
                                 dialogTitle = "Got your prediction"
                                 delay(1000)
                                 isLoading = false
@@ -598,13 +625,14 @@ fun FilterSheetPrediction(
     var initialStartdate by remember {
         mutableStateOf(maxdate.FromHelpertoDate().FromHelpertoTimemilis())
     }
+
     val dateRange = rememberDateRangePickerState(
         yearRange = IntRange(
             maxdate.FromHelpertoDate().FromHelperThatDateStrjustYear(),
             DatePickerDefaults.YearRange.last
         ),
         initialSelectedStartDateMillis = initialStartdate,
-        initialDisplayedMonthMillis = mindate.FromHelpertoDate().FromHelpertoTimemilis(),
+        initialDisplayedMonthMillis = maxdate.FromHelpertoDate().FromHelpertoTimemilis(),
     )
 
 
@@ -613,7 +641,7 @@ fun FilterSheetPrediction(
         key2 = dateRange.selectedEndDateMillis,
     ) {
         withContext(Dispatchers.IO) {
-            dateRangeStart = mindate.FromHelpertoDate()
+            dateRangeStart = maxdate.FromHelpertoDate()
             initialStartdate = dateRangeStart.FromHelpertoTimemilis()
             dateRangeEnd = dateRange.selectedEndDateMillis.let {
                 if (it == null) {
@@ -648,7 +676,7 @@ fun FilterSheetPrediction(
                     FilledTonalButton(onClick = {
                         applyFilter(
                             PredictWholesalesRequest_model(
-                                with(ChronoUnit.DAYS){
+                                with(ChronoUnit.DAYS) {
                                     between(
                                         LocalDate.parse(dateRangeStart),
                                         LocalDate.parse(dateRangeEnd),
@@ -818,10 +846,17 @@ fun SwitchTile(
 @Composable
 fun MySalesPrediction(
     viewmodel: OASISViewmodel,
+    isGraphView: () -> Boolean,
     modifier: Modifier
 ) {
     val salesState by viewmodel.salesState.collectAsState()
     val config = LocalConfiguration.current
+
+    val predicted_sales by remember {
+        derivedStateOf {
+            salesState.listPredictedWholeSalesCache
+        }
+    }
 
     Surface(
         modifier = modifier
@@ -853,8 +888,41 @@ fun MySalesPrediction(
                 }
             }
         } else {
-            Surface {
-                // make a prediction layout of results rows and how to graph the past and new line
+            if (isGraphView()) {
+                Card{
+                    val message = listOf(
+                        "the green lines were the recent actual sales",
+                        "the other color were the predicted sales"
+                    )
+                    CardWithTitle(
+                        title = "REMINDER",
+                        modifier = Modifier.aspectRatio(3f / 2)
+                    ) {
+                        message.forEach {
+                            Text(
+                                text = it,
+                                style = MaterialTheme.typography.bodyLarge,
+                                fontWeight = FontWeight.Bold
+                            )
+                        }
+                        Text(
+                            text = "Predictions arent real, they're just assumptions what will the outcome of the future",
+                            style = MaterialTheme.typography.bodyLarge,
+                            fontWeight = FontWeight.Bold
+                        )
+                    }
+                    PlotPredict(
+                        predictionwholesalesresponseModel = predicted_sales!!,
+                        modifier = Modifier.fillMaxSize()
+                    )
+                }
+            } else {
+                Surface {
+                    RowPredictions(
+                        predictionwholesalesresponseModel = predicted_sales!!,
+                        modifier = Modifier.fillMaxSize()
+                    )
+                }
             }
         }
     }
@@ -1097,6 +1165,231 @@ fun RowTable(
             }
 
 
+        }
+    }
+}
+
+
+@Composable
+fun PlotPredict(
+    predictionwholesalesresponseModel: PredictionWholesalesResponse_model,
+    modifier: Modifier
+) {
+    val lags =
+        predictionwholesalesresponseModel.buffer_lags.map { it.copy(date = it.date.FromHelpertoDate()) }
+    val preds =
+        predictionwholesalesresponseModel.prediction.map { it.copy(date = it.date.FromHelpertoDate()) }
+    val dates = lags.let {
+        it.map {
+            it.date
+        }.toMutableList().apply {
+            addAll(preds.map { it.date })
+        }
+    }
+    val config = LocalConfiguration.current
+
+    val chartEntryModel = ComposedChartEntryModelProducer.build {
+        add(
+            entriesOf(
+                *lags.mapIndexed { index, lag ->
+                    index to lag.sales
+                }.toMutableList().apply {
+                    add(lags.size to preds.last().sales)
+                }.toTypedArray()
+            )
+        )
+        add(
+            entriesOf(
+                *preds.mapIndexed { index, pred ->
+                    (index + lags.size) to pred.sales
+                }.toTypedArray()
+            )
+        )
+    }
+    val horizontalAxisValueFormatter =
+        AxisValueFormatter<AxisPosition.Horizontal.Bottom> { value, _ ->
+            dates[value.toInt()]
+        }
+    Chart(
+        chart = lineChart(lines = listOf(lineSpec(lineColor = Color.Green))) + lineChart(
+            lines = listOf(
+                lineSpec(lineColor = MaterialTheme.colorScheme.tertiary)
+            )
+        ),
+        chartModelProducer = chartEntryModel,
+        startAxis = rememberStartAxis(),
+        bottomAxis = rememberBottomAxis(
+            valueFormatter = horizontalAxisValueFormatter,
+            tick = LineComponent(
+                margins = MutableDimensions(
+                    horizontalDp = (config.screenWidthDp / 3).toFloat(),
+                    verticalDp = 10f
+                ),
+                color = Color.Black.value.toInt()
+            )
+        ),
+        legend = VerticalLegend(
+            items = listOf(
+                LegendItem(
+                    icon = ShapeComponent(
+                        color = Color.Green.toArgb()
+                    ),
+                    labelText = "Actual data",
+                    label = textComponent()
+                ),
+                LegendItem(
+                    icon = ShapeComponent(
+                        color = MaterialTheme.colorScheme.tertiary.toArgb()
+                    ),
+                    labelText = "Predictions",
+                    label = textComponent()
+                )
+            ),
+            iconPaddingDp = 8.dp.value,
+            iconSizeDp = 8.dp.value
+        ),
+        modifier = modifier
+    )
+
+}
+
+@OptIn(ExperimentalFoundationApi::class)
+@Composable
+fun RowPredictions(
+    predictionwholesalesresponseModel: PredictionWholesalesResponse_model,
+    modifier: Modifier
+) {
+    val lags =
+        predictionwholesalesresponseModel.buffer_lags.map { it.copy(date = it.date.FromHelpertoDate()) }
+    val pred =
+        predictionwholesalesresponseModel.prediction.map { it.copy(date = it.date.FromHelpertoDate()) }
+    LazyColumn(
+        modifier = modifier
+    ) {
+        item {
+            CardWithTitle(
+                title = "REMINDER",
+                modifier = Modifier.aspectRatio(3f / 2)
+            ) {
+                Text(
+                    text = "Predictions arent real, they're just assumptions what will the outcome of the future",
+                    style = MaterialTheme.typography.bodyLarge,
+                    fontWeight = FontWeight.Bold
+                )
+            }
+        }
+        stickyHeader {
+            val list = listOf("Date", "Sales")
+            Surface {
+                Row {
+                    list.forEach {
+                        Text(
+                            text = it,
+                            modifier = Modifier
+                                .weight(1f)
+                                .padding(8.dp)
+                        )
+                    }
+                }
+            }
+        }
+        items(lags.size) {
+            Card {
+                Row {
+                    Text(
+                        text = lags[it].date,
+                        modifier = Modifier
+                            .weight(1f)
+                            .padding(8.dp)
+                    )
+                    Text(
+                        text = "${lags[it].sales}",
+                        modifier = Modifier
+                            .weight(1f)
+                            .padding(8.dp)
+                    )
+                }
+            }
+        }
+        items(pred.size) {
+            Card(
+                colors = CardDefaults.cardColors(
+                    containerColor = MaterialTheme.colorScheme.tertiaryContainer,
+                    contentColor = MaterialTheme.colorScheme.onTertiaryContainer,
+                )
+            ) {
+                Row {
+                    Text(
+                        text = pred[it].date,
+                        modifier = Modifier
+                            .weight(1f)
+                            .padding(8.dp)
+                    )
+                    Text(
+                        text = "${pred[it].sales}",
+                        modifier = Modifier
+                            .weight(1f)
+                            .padding(8.dp)
+                    )
+                }
+            }
+        }
+    }
+}
+
+
+@Preview
+@Composable
+fun test() {
+    val x = listOf("a", "b", "c", "d", "e", "f", "g")
+    val y = listOf(10, 2, 5)
+    val config = LocalConfiguration.current
+
+    val chartEntryModel = ComposedChartEntryModelProducer.build {
+        add(
+            entriesOf(
+                Pair(0, 10),
+                Pair(1, 2),
+                Pair(2, 6)
+            )
+        )
+        add(
+            entriesOf(
+                Pair(2, 6),
+                Pair(3, 7),
+                Pair(4, 8),
+                Pair(5, 7),
+                Pair(6, 8)
+            )
+        )
+    }
+    val horizontalAxisValueFormatter =
+        AxisValueFormatter<AxisPosition.Horizontal.Bottom> { value, _ ->
+            x[value.toInt()]
+        }
+
+    OASISTheme {
+        Surface(
+            modifier = Modifier.fillMaxSize()
+        ) {
+            Card {
+                Chart(
+                    chart = lineChart() + lineChart(lines = listOf(lineSpec(lineColor = Color.Red))),
+                    chartModelProducer = chartEntryModel,
+                    startAxis = rememberStartAxis(),
+                    bottomAxis = rememberBottomAxis(
+                        valueFormatter = horizontalAxisValueFormatter,
+                        tick = LineComponent(
+                            margins = MutableDimensions(
+                                horizontalDp = (config.screenWidthDp / 3).toFloat(),
+                                verticalDp = 10f
+                            ),
+                            color = Color.Black.value.toInt()
+                        )
+                    ),
+                    modifier = Modifier.aspectRatio(3f / 2)
+                )
+            }
         }
     }
 }
