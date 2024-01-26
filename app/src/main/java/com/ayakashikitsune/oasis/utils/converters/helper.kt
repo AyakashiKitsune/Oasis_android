@@ -1,6 +1,7 @@
 package com.ayakashikitsune.oasis.utils.converters
 
 import java.text.SimpleDateFormat
+import java.util.Calendar
 import java.util.Date
 import java.util.Locale
 
@@ -18,16 +19,35 @@ val digit_month = mapOf<Int, String>(
     11 to "november",
     12 to "december"
 )
-fun Long.toDate() : String{
+fun Long.FromHelpertoDate() : String{
     return SimpleDateFormat("yyyy-MM-dd").run {
-        format(Date(this@toDate))
+        format(Date(this@FromHelpertoDate))
     }
 }
 
-fun String.toDate(): String{
+fun String.FromHelpertoDate(): String{
     return SimpleDateFormat("EEE, dd MMM yyyy HH:mm:ss z", Locale.US).let {
             parser ->
         val dateParsed = parser.parse(this)
-        SimpleDateFormat("dd-MMM-yyyy", Locale.US).format(dateParsed)
+        SimpleDateFormat("yyyy-MM-dd", Locale.US).format(dateParsed)
+    }
+}
+
+fun String.FromHelpertoTimemilis() : Long{
+    return SimpleDateFormat("yy-MM-dd").let {
+        formater ->
+        formater.parse(this).let {thenthisdate->
+            Calendar.getInstance().run {
+                time = thenthisdate
+                timeInMillis
+            }
+        }
+    }
+}
+fun String.FromHelperThatDateStrjustYear() : Int{
+    return SimpleDateFormat("yyyy-MM-dd", Locale.US).let {
+            parser ->
+        val dateParsed = parser.parse(this)
+        SimpleDateFormat("yyyy", Locale.US).format(dateParsed).toInt()
     }
 }

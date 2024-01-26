@@ -1,6 +1,5 @@
 package com.ayakashikitsune.oasis.model
 
-import android.icu.text.SimpleDateFormat
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.ayakashikitsune.oasis.data.constants.SalesResponse_model_sort
@@ -9,7 +8,7 @@ import com.ayakashikitsune.oasis.data.jsonModels.Query_model
 import com.ayakashikitsune.oasis.model.restClient.InventoryRestClient
 import com.ayakashikitsune.oasis.model.restClient.SalesRestClient
 import com.ayakashikitsune.oasis.model.restClient.SetupRestClient
-import com.ayakashikitsune.oasis.utils.converters.toDate
+import com.ayakashikitsune.oasis.utils.converters.FromHelpertoDate
 import io.ktor.client.HttpClient
 import io.ktor.client.engine.android.Android
 import io.ktor.client.plugins.contentnegotiation.ContentNegotiation
@@ -24,7 +23,6 @@ import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import kotlinx.serialization.json.Json
-import java.util.Locale
 
 class
 OASISViewmodel : ViewModel() {
@@ -86,29 +84,12 @@ OASISViewmodel : ViewModel() {
                                 overviewresponseCache = result.copy(
                                     fourteen_days_wholesales = result.fourteen_days_wholesales.map {
                                         it.copy(
-                                            date = it.date.let {
-
-                                                val originalDate = SimpleDateFormat(
-                                                    "EEE, dd MMM yyyy HH:mm:ss z",
-                                                    Locale.US
-                                                ).parse(it)
-                                                SimpleDateFormat("EEE", Locale.US).format(
-                                                    originalDate
-                                                )
-                                            }
+                                            date = it.date.FromHelpertoDate()
                                         )
                                     },
                                     seven_days_wholesales = result.seven_days_wholesales.map {
                                         it.copy(
-                                            date = it.date.let {
-                                                val originalDate = SimpleDateFormat(
-                                                    "EEE, dd MMM yyyy HH:mm:ss z",
-                                                    Locale.US
-                                                ).parse(it)
-                                                SimpleDateFormat("yyyy-MM-dd", Locale.US).format(
-                                                    originalDate
-                                                )
-                                            }
+                                            date = it.date.FromHelpertoDate()
                                         )
                                     }
                                 )
@@ -277,7 +258,7 @@ OASISViewmodel : ViewModel() {
                                 salesRestClient.get_sales_betweenWholesale(fromdate, todate).apply {
                                     map {
                                         it.copy(
-                                            date = it.date.toDate()
+                                            date = it.date.FromHelpertoDate()
                                         )
                                     }
                                 }
@@ -343,7 +324,7 @@ OASISViewmodel : ViewModel() {
                             val result = salesRestClient.get_salesWholesale(YYMMDD).apply {
                                 map {
                                     it.copy(
-                                        date = it.date.toDate()
+                                        date = it.date.FromHelpertoDate()
                                     )
                                 }
                             }
@@ -411,7 +392,7 @@ OASISViewmodel : ViewModel() {
                             val result = salesRestClient.get_recent_salesWholesale().apply {
                                 map {
                                     it.copy(
-                                        date = it.date.toDate()
+                                        date = it.date.FromHelpertoDate()
                                     )
                                 }
                             }
@@ -420,7 +401,7 @@ OASISViewmodel : ViewModel() {
                                     listSalesWholesaleCache = result
                                 )
                             }
-                        }  catch (e: Exception) {
+                        } catch (e: Exception) {
                             _errorLogs.update {
                                 val list = it.toMutableList().apply {
                                     add(
@@ -436,12 +417,12 @@ OASISViewmodel : ViewModel() {
                         }
                     }
 
-                    false-> {
+                    false -> {
                         try {
                             val result = salesRestClient.get_recent_sales().apply {
                                 map {
                                     it.copy(
-                                        date = it.date.toDate()
+                                        date = it.date.FromHelpertoDate()
                                     )
                                 }
                             }
@@ -470,12 +451,43 @@ OASISViewmodel : ViewModel() {
         }
     }
 
+    fun get_recent_date(
+        onError: (String) -> Unit
+    ) {
+        viewModelScope.launch {
+            withContext(Dispatchers.IO) {
+                try {
+                    val result = salesRestClient.recentDate()
+                    _salesState.update {
+                        it.copy(
+                            max_date = result.max_date,
+                            min_date = result.min_date
+                        )
+                    }
+                } catch (e: Exception) {
+                    _errorLogs.update {
+                        val list = it.toMutableList().apply {
+                            add(
+                                LoggerError(
+                                    message = e.message,
+                                    fromFunction = "get_recent_sales"
+                                )
+                            )
+                        }
+                        list
+                    }
+                    onError(e.message ?: "error")
+                }
+            }
+        }
+    }
 
     fun predict_wholesales(
         duration: Int,
         onError: (String) -> Unit
     ) {
         viewModelScope.launch {
+            println(duration)
             withContext(Dispatchers.IO) {
                 try {
                     val result = salesRestClient.predict_wholesales(duration)
@@ -486,7 +498,7 @@ OASISViewmodel : ViewModel() {
                     }
                 } catch (e: Exception) {
                     _errorLogs.update {
-                        it.toMutableList().apply {
+                        val list = it.toMutableList().apply {
                             add(
                                 LoggerError(
                                     message = e.message,
@@ -494,6 +506,7 @@ OASISViewmodel : ViewModel() {
                                 )
                             )
                         }
+                        list
                     }
                     onError(e.message ?: "error")
                 }

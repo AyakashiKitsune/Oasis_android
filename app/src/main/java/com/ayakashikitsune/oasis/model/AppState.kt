@@ -9,7 +9,10 @@ data class SalesState(
     val listSalesCache: List<SalesResponse_model> = emptyList(),
     val listSalesWholesaleCache: List<SalesWholesaleResponse_model> = emptyList(),
 
-    val listPredictedWholeSalesCache: List<PredictionWholesalesResponse_model> = emptyList(),
+    val listPredictedWholeSalesCache: PredictionWholesalesResponse_model? = null,
+
+    val max_date : String = "",
+    val min_date : String = ""
 
 //    val recentSalesCache : List<SalesResponse_model> = emptyList(),
 //    val recentSalesWholesaleCache : List<SalesWholesaleResponse_model> = emptyList()

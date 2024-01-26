@@ -75,7 +75,7 @@ fun MainScreen(
     ) { padding ->
         NavHost(
             navController = navController,
-            startDestination = Screen_paths.Sales_screen.address_id,
+            startDestination = Screen_paths.Overview_screen.address_id,
             enterTransition = { fadeIn() },
             exitTransition = { fadeOut() },
             popExitTransition = { fadeOut() },
