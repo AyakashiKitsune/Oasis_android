@@ -406,7 +406,10 @@ fun SavekillTable(
                         it.january == 1
                     }
                 }
+            }?.sortedBy {
+                it.name
             }
+
         }
     }
     val notsell by remember {
@@ -429,6 +432,8 @@ fun SavekillTable(
                         it.january == 1
                     }
                 }
+            }?.sortedBy {
+                it.name
             }
         }
     }
