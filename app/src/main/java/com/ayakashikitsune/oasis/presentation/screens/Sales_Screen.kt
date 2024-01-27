@@ -328,8 +328,7 @@ fun Sales_Screen(
                         applyFilter = {
                             coroutineScope.launch {
                                 isLoading = true
-                                dialogTitle =
-                                    "predicting your ${it.duration} days from ${mindate.FromHelpertoDate()}"
+                                dialogTitle = "Predicting your ${it.duration} days from ${mindate.FromHelpertoDate()}"
                                 delay(1000)
                                 viewmodel.predict_wholesales(
                                     duration = it.duration,
@@ -345,7 +344,7 @@ fun Sales_Screen(
                                     }
                                 )
                                 while (salesState.listPredictedWholeSalesCache == null){
-                                    dialogTitle = "Predicting"
+                                    dialogTitle = "Predicting ${it.duration} days"
                                     delay(500)
                                 }
                                 dialogTitle = "Got your prediction"

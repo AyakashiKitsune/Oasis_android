@@ -71,6 +71,15 @@ OASISViewmodel : ViewModel() {
     private val _overviewState = MutableStateFlow(OverviewState())
     val overviewState = _overviewState.asStateFlow()
 
+    private val _inventoryState = MutableStateFlow(InventoryState())
+    val inventoryState = _inventoryState.asStateFlow()
+    fun inventoryUpdate(inventoryState: InventoryState){
+        _inventoryState.update {
+            inventoryState
+        }
+    }
+
+
     fun get_overview(
         onError: suspend (String) -> Unit
     ) {
@@ -95,7 +104,7 @@ OASISViewmodel : ViewModel() {
                                 )
                             )
                         }
-                    }else{
+                    } else {
                         _overviewState.value.overviewresponseCache
                     }
                 } catch (e: Exception) {
@@ -489,7 +498,6 @@ OASISViewmodel : ViewModel() {
         onError: (String) -> Unit
     ) {
         viewModelScope.launch {
-            println(duration)
             withContext(Dispatchers.IO) {
                 try {
                     val result = salesRestClient.predict_wholesales(duration)
@@ -517,4 +525,78 @@ OASISViewmodel : ViewModel() {
     }
 
 
+    fun get_savekill_analysis(
+        onError: (String) -> Unit
+    ) {
+        viewModelScope.launch {
+            withContext(Dispatchers.IO) {
+                try {
+                    val result = inventoryRestClient.analyze_savekill_product()
+                    _inventoryState.update {
+                        it.copy(
+                            listofSaveKill = result
+                        )
+                    }
+                } catch (e: Exception) {
+                    _errorLogs.update {
+                        val list = it.toMutableList().apply {
+                            add(
+                                LoggerError(
+                                    message = e.message,
+                                    fromFunction = "get_savekill_analysis"
+                                )
+                            )
+                        }
+                        list
+                    }
+                    onError(e.message ?: "error")
+                }
+            }
+        }
+    }
+
+    fun get_stocks_analysis(
+        onError: (String) -> Unit
+    ) {
+        viewModelScope.launch {
+            withContext(Dispatchers.IO) {
+                try {
+                    val result = inventoryRestClient.analyze_stocking()
+                    _inventoryState.update {
+                        it.copy(
+                            listofStocknalysis = result
+                        )
+                    }
+                } catch (e: Exception) {
+                    _errorLogs.update {
+                        it.toMutableList().apply {
+                            add(
+                                LoggerError(
+                                    message = e.message,
+                                    fromFunction = "get_stocks_analysis"
+                                )
+                            )
+                        }
+                    }
+                    onError(e.message ?: "error")
+                }
+            }
+        }
+    }
+
+    fun test_error(){
+        viewModelScope.launch {
+            _errorLogs.update {
+                it.toMutableList().apply {
+                    println(it)
+                    add(
+                        LoggerError(
+                            message = (1..100).random().toString(),
+                            fromFunction = "test"
+                        )
+                    )
+                }.toList()
+            }
+        }
+    }
 }

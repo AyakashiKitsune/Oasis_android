@@ -59,8 +59,6 @@ fun MainScreen(
     val currentNav = navController.currentBackStackEntryAsState()
 
     var currentPage by remember { mutableIntStateOf(0) }
-    val inventoryHorizontalState =
-        rememberPagerState(initialPage = 0, pageCount = { Screen_paths.Sales_screen.tabs.size })
 
     Scaffold(
         bottomBar = {
@@ -96,9 +94,8 @@ fun MainScreen(
             }
             composable(Screen_paths.Inventory_screen.address_id) {
                 Inventory_Screen(
-                    paddingValues = padding,
-                    currentPage = { currentPage },
-                    horizontalpager = { inventoryHorizontalState }
+                    viewmodel,
+                    padding
                 )
             }
             composable(Screen_paths.Settings_screen.address_id) {
