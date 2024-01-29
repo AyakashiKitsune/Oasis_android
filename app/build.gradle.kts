@@ -83,6 +83,9 @@ dependencies {
 // vico
     implementation("com.patrykandpatrick.vico:compose:1.13.1")
     implementation("com.patrykandpatrick.vico:compose-m3:1.13.1")
+// datastore
+    implementation ("androidx.datastore:datastore-preferences:1.0.0")
+
 
 //kotlinx serialization
     implementation ("org.jetbrains.kotlinx:kotlinx-serialization-json:1.6.2")

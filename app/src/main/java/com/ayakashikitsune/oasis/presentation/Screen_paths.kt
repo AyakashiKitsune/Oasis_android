@@ -5,14 +5,12 @@ import androidx.compose.material.icons.filled.ErrorOutline
 import androidx.compose.material.icons.filled.Home
 import androidx.compose.material.icons.filled.Inventory
 import androidx.compose.material.icons.filled.PermDeviceInformation
+import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.PointOfSale
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material.icons.rounded.AutoGraph
 import androidx.compose.material.icons.rounded.FormatListNumbered
-import androidx.compose.material.icons.rounded.ManageSearch
 import androidx.compose.material.icons.rounded.PointOfSale
-import androidx.compose.material.icons.rounded.Reorder
-import androidx.compose.material.icons.rounded.Sell
 import androidx.compose.ui.graphics.vector.ImageVector
 
 sealed class Screen_paths(val title: String, val address_id: String, val icon: ImageVector) {
@@ -27,16 +25,11 @@ sealed class Screen_paths(val title: String, val address_id: String, val icon: I
         )
     }
 
-    object Inventory_screen : Screen_paths("Inventory", "inventory_Screen", Icons.Default.Inventory){
-        val tabs = listOf(
-            Tabs("Sell or Stop",Icons.Rounded.Sell),
-            Tabs("A.P.I.S analysis, promote, inventory,suggestion", Icons.Rounded.ManageSearch),
-            Tabs("Reorder", Icons.Rounded.Reorder)
-        )
-    }
+    object Inventory_screen : Screen_paths("Inventory", "inventory_Screen", Icons.Default.Inventory)
     object Settings_screen : Screen_paths("Settings", "settings_Screen", Icons.Default.Settings)
     object About_screen : Screen_paths("About", "About_Screen", Icons.Default.PermDeviceInformation)
-    object Error_Screen : Screen_paths("Error Logs", "ErrorScreen", Icons.Default.ErrorOutline)
+    object Error_screen : Screen_paths("Error Logs", "ErrorScreen", Icons.Default.ErrorOutline)
+    object Welcome_screen : Screen_paths("Welcome", "WelcomeScreen", Icons.Default.Person)
 }
 
 data class Tabs(

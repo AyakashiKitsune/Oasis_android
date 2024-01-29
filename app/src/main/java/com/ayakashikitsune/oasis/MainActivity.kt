@@ -7,7 +7,6 @@ import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.NavigationBar
@@ -17,11 +16,14 @@ import androidx.compose.material3.Tab
 import androidx.compose.material3.TabRow
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
@@ -36,44 +38,58 @@ import com.ayakashikitsune.oasis.presentation.screens.Inventory_Screen
 import com.ayakashikitsune.oasis.presentation.screens.Overview_Screen
 import com.ayakashikitsune.oasis.presentation.screens.Sales_Screen
 import com.ayakashikitsune.oasis.presentation.screens.Settings_Screen
+import com.ayakashikitsune.oasis.presentation.screens.WelcomeScreen
 import com.ayakashikitsune.oasis.ui.theme.OASISTheme
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
+
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+
         setContent {
             OASISTheme {
                 val viewmodel = OASISViewmodel()
-                MainScreen(viewmodel)
+                MainScreen(viewmodel, Modifier.fillMaxSize())
             }
         }
     }
 }
 
+
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
 fun MainScreen(
-    viewmodel: OASISViewmodel
+    viewmodel: OASISViewmodel,
+    modifier: Modifier
 ) {
     val navController = rememberNavController()
     val currentNav = navController.currentBackStackEntryAsState()
-
-    var currentPage by remember { mutableIntStateOf(0) }
-
+    val context = LocalContext.current
+    var iswelcomed by remember { mutableStateOf<Boolean>(false) }
+    val coroutineScope = rememberCoroutineScope()
+    LaunchedEffect(true) {
+        iswelcomed = viewmodel.getIswelcome(context)
+    }
     Scaffold(
         bottomBar = {
-            Oasis_NavigationBar(navList = navItems, onClick = {
-                navController.navigate(it.address_id) {
-                    this.launchSingleTop = true
-                }
-            }, selected = {
-                currentNav.value?.destination?.route ?: Screen_paths.Overview_screen.address_id
-            })
+            if(currentNav.value?.destination?.route != Screen_paths.Welcome_screen.address_id){
+                Oasis_NavigationBar(navList = navItems, onClick = {
+                    navController.navigate(it.address_id) {
+                        this.launchSingleTop = true
+                    }
+                }, selected = {
+                    currentNav.value?.destination?.route ?: Screen_paths.Overview_screen.address_id
+                })
+            }
         },
+        modifier = modifier
     ) { padding ->
         NavHost(
             navController = navController,
-            startDestination = Screen_paths.Overview_screen.address_id,
+            startDestination = Screen_paths.Welcome_screen.address_id,
             enterTransition = { fadeIn() },
             exitTransition = { fadeOut() },
             popExitTransition = { fadeOut() },
@@ -106,8 +122,26 @@ fun MainScreen(
             composable(Screen_paths.About_screen.address_id) {
                 About_Screen()
             }
-            composable(Screen_paths.Error_Screen.address_id) {
+            composable(Screen_paths.Error_screen.address_id) {
                 ErrorScreen(viewmodel, Modifier.fillMaxSize())
+            }
+            composable(Screen_paths.Welcome_screen.address_id) {
+                WelcomeScreen(
+                    moveNextScreen = {
+                        coroutineScope.launch {
+                            withContext(Dispatchers.IO){
+                                iswelcomed = viewmodel.setIswelcome(context)
+                            }
+                        }
+                        println(iswelcomed)
+                        if (iswelcomed == true) {
+                            navController.navigate(Screen_paths.Overview_screen.address_id) {
+                                launchSingleTop = true
+                            }
+                        }
+                    },
+                    modifier = Modifier.fillMaxSize()
+                )
             }
         }
     }

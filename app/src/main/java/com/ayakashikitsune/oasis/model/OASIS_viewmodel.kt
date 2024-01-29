@@ -1,5 +1,11 @@
 package com.ayakashikitsune.oasis.model
 
+import android.content.Context
+import androidx.datastore.core.DataStore
+import androidx.datastore.preferences.core.Preferences
+import androidx.datastore.preferences.core.booleanPreferencesKey
+import androidx.datastore.preferences.core.edit
+import androidx.datastore.preferences.preferencesDataStore
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.ayakashikitsune.oasis.data.constants.SalesResponse_model_sort
@@ -19,13 +25,21 @@ import io.ktor.serialization.kotlinx.json.json
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import kotlinx.serialization.json.Json
 
-class
-OASISViewmodel : ViewModel() {
+const val welcomeState = "Welcome_state"
+private val Context.dataStore: DataStore<Preferences> by preferencesDataStore(name = welcomeState)
+
+object WelcomeScreen {
+    val ISWELCOMEKEY = booleanPreferencesKey("ISWELCOME")
+}
+
+
+class OASISViewmodel : ViewModel() {
     val rest_client: HttpClient = HttpClient(Android) {
         engine {
             connectTimeout = 100_000
@@ -47,12 +61,11 @@ OASISViewmodel : ViewModel() {
 
         }
     }
-
     private val _serverConfig = MutableStateFlow(
         ServerConfig(
 //            host = "http://192.168.84.255"
-//            host = "http://192.168.1.43"
-            host = "http://192.168.1.12"
+            host = "http://192.168.1.43"
+//            host = "http://192.168.1.12"
         )
     )
     val serverConfig = _serverConfig.asStateFlow()
@@ -64,6 +77,8 @@ OASISViewmodel : ViewModel() {
     private val _errorLogs = MutableStateFlow(listOf<LoggerError>())
     val errorLogs = _errorLogs.asStateFlow()
 
+    private val _setupState = MutableStateFlow(SetupState())
+    val setupState = _setupState.asStateFlow()
 
     private val _salesState = MutableStateFlow(SalesState())
     val salesState = _salesState.asStateFlow()
@@ -73,12 +88,29 @@ OASISViewmodel : ViewModel() {
 
     private val _inventoryState = MutableStateFlow(InventoryState())
     val inventoryState = _inventoryState.asStateFlow()
-    fun inventoryUpdate(inventoryState: InventoryState){
+
+    suspend fun getIswelcome(context: Context): Boolean {
+        context.dataStore.edit {
+            it.clear()
+        }
+        println("clear")
+        println("return ")
+        return context.dataStore.data.first()[WelcomeScreen.ISWELCOMEKEY] ?: false
+    }
+
+    suspend fun setIswelcome(context: Context): Boolean {
+        context.dataStore.edit {
+            it[WelcomeScreen.ISWELCOMEKEY] = true
+        }
+        println("Executed")
+        return true
+    }
+
+    fun inventoryUpdate(inventoryState: InventoryState) {
         _inventoryState.update {
             inventoryState
         }
     }
-
 
     fun get_overview(
         onError: suspend (String) -> Unit
@@ -104,8 +136,6 @@ OASISViewmodel : ViewModel() {
                                 )
                             )
                         }
-                    } else {
-                        _overviewState.value.overviewresponseCache
                     }
                 } catch (e: Exception) {
                     _errorLogs.update {
@@ -584,18 +614,17 @@ OASISViewmodel : ViewModel() {
         }
     }
 
-    fun test_error(){
+    fun test_error() {
         viewModelScope.launch {
             _errorLogs.update {
                 it.toMutableList().apply {
-                    println(it)
                     add(
                         LoggerError(
                             message = (1..100).random().toString(),
                             fromFunction = "test"
                         )
                     )
-                }.toList()
+                }
             }
         }
     }

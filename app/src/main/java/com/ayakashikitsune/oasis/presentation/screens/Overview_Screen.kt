@@ -103,10 +103,6 @@ fun Overview_Screen(
             scrollState.firstVisibleItemIndex >= 4
         }
     }
-    val soldcountrankfont = animateFloatAsState(
-        targetValue = if (status) MaterialTheme.typography.displayLarge.fontSize.value else MaterialTheme.typography.displaySmall.fontSize.value,
-        label = "font"
-    )
 
     val overviewState by viewmodel.overviewState.collectAsState()
 

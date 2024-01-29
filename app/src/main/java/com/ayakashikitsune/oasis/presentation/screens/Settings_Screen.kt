@@ -27,7 +27,7 @@ fun Settings_Screen(
     )
     val action = listOf(
         {
-            navController.navigate(Screen_paths.Error_Screen.address_id) {
+            navController.navigate(Screen_paths.Error_screen.address_id) {
                 this.launchSingleTop = true
             }
         },
